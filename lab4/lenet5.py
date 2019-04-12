@@ -29,7 +29,7 @@ class LeNet5:
     def predict(self, img):
         img = img.reshape(-1, *self.in_shape)
 
-        return self.model.predict_classes(img) + (0 if self.use_mnist else 1)
+        return self.model.predict_classes(img).item(0) + (0 if self.use_mnist else 1)
 
     def load_model(self):
         models = Path(f'{ROOT_PATH}/models').glob('*.hdf5')
