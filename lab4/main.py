@@ -1,39 +1,27 @@
 # import os
 # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-from lab4.lenet5 import LeNet5
-from lab4.data_reader import prepare_mnist_data, prepare_svhn_data
+from lab4.conv_nn import ConvNN
+from lab4.data_reader import prepare_svhn_data
 import cv2
 from pathlib import Path
 
-USE_MNIST = False
-
 
 def main():
-    if USE_MNIST:
-        lenet5 = LeNet5(
-            (28, 28, 1),
-            10,
-            prepare_mnist_data(),
-            epochs=30,
-            use_mnist=USE_MNIST
-        )
-    else:
-        lenet5 = LeNet5(
-            (32, 32, 3),
-            10,
-            prepare_svhn_data(),
-            epochs=30,
-            use_mnist=USE_MNIST
-        )
+    conv_nn = ConvNN(
+        (32, 32, 3),
+        prepare_svhn_data(),
+        epochs=150,
+        use_prev=True
+    )
 
-    lenet5.build_model()
+    conv_nn.build_model()
 
-    test(lenet5)
+    test(conv_nn)
 
 
 def test(lenet5):
-    x_tests = Path('./test').glob('*.jpg')
-    y_test = [1, 1, 2, 2, 3, 4, 7, 9]
+    x_tests = Path('./test/test').glob('*.png')
+    y_test = [26, 34, 37, 49, 189]
 
     for i, t in enumerate(x_tests):
         im = cv2.imread(str(t.absolute()))

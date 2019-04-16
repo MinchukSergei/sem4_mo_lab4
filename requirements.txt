@@ -1,3 +1,6 @@
 tensorflow-gpu
 scipy
 opencv-python
+numpy
+hdf5storage
+tqdm
