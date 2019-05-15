@@ -2,6 +2,8 @@ import numpy as np
 
 import tensorflow as tf
 
+tensor_board_path = 'D:/Programming/bsuir/sem4/MO/lab4/tensorboard'
+
 
 class ConvNN:
     def __init__(self, in_shape, data, epochs=30, use_prev=False):
@@ -34,7 +36,7 @@ class ConvNN:
         self.drop_rate = tf.placeholder(tf.float32)
 
         filters1 = 16
-        h_conv1 = conv_2d(self.x, weights("WC_1", [5, 5, 3, filters1])) + bias("BC_1", [filters1])
+        h_conv1 = conv_2d(self.x, weights("WC_1", [7, 7, 3, filters1])) + bias("BC_1", [filters1])
         h_conv1 = tf.layers.batch_normalization(h_conv1, training=True)
         h_conv1 = tf.nn.relu(h_conv1)
         h_conv1 = max_pool(h_conv1, 2)
@@ -54,7 +56,7 @@ class ConvNN:
         h_conv3 = tf.nn.dropout(h_conv3, rate=self.drop_rate)
 
         filters4 = 48
-        h_conv4 = conv_2d(h_conv3, weights("WC_4", [5, 5, filters3, filters4])) + bias("BC_4", [filters4])
+        h_conv4 = conv_2d(h_conv3, weights("WC_4", [1, 1, filters3, filters4])) + bias("BC_4", [filters4])
         h_conv4 = tf.layers.batch_normalization(h_conv4, training=True)
         h_conv4 = tf.nn.relu(h_conv4)
         h_conv4 = tf.nn.dropout(h_conv4, rate=self.drop_rate)
@@ -67,7 +69,7 @@ class ConvNN:
         h_conv5 = tf.nn.dropout(h_conv5, rate=self.drop_rate)
 
         filters6 = 64
-        h_conv6 = conv_2d(h_conv5, weights("WC_6", [5, 5, filters5, filters6])) + bias("BC_6", [filters6])
+        h_conv6 = conv_2d(h_conv5, weights("WC_6", [1, 1, filters5, filters6])) + bias("BC_6", [filters6])
         h_conv6 = tf.layers.batch_normalization(h_conv6, training=True)
         h_conv6 = tf.nn.relu(h_conv6)
         h_conv6 = tf.nn.dropout(h_conv6, rate=self.drop_rate)
@@ -86,30 +88,30 @@ class ConvNN:
 
         h_flat = tf.reshape(h_conv8, [-1, 4 * 4 * filters8])
 
-        units1 = 2048
+        units1 = 1024
         h_fc1 = tf.nn.relu(
             tf.matmul(h_flat, weights("WFC_1", [4 * 4 * filters8, units1])) + bias("BFC_1", [units1]))
         h_fc1 = tf.nn.dropout(h_fc1, rate=self.drop_rate)
 
-        units2 = 2048
+        units2 = 1024
         h_fc2 = tf.nn.relu(tf.matmul(h_fc1, weights("WFC_2", [units1, units2])) + bias("BFC_2", [units2]))
         h_fc2 = tf.nn.dropout(h_fc2, rate=self.drop_rate)
 
-        units3 = 2048
+        units3 = 1024
         h_fc3 = tf.nn.relu(tf.matmul(h_fc2, weights("WFC_3", [units2, units3])) + bias("BFC_3", [units3]))
         h_fc3 = tf.nn.dropout(h_fc3, rate=self.drop_rate)
 
         digit_len = 11
         W1 = tf.get_variable(shape=[units2, digit_len], name="WFC1",
-                             initializer=tf.contrib.layers.xavier_initializer())
+                             initializer=tf.truncated_normal_initializer(stddev=0.1))
         W2 = tf.get_variable(shape=[units2, digit_len], name="WFC2",
-                             initializer=tf.contrib.layers.xavier_initializer())
+                             initializer=tf.truncated_normal_initializer(stddev=0.1))
         W3 = tf.get_variable(shape=[units2, digit_len], name="WFC3",
-                             initializer=tf.contrib.layers.xavier_initializer())
+                             initializer=tf.truncated_normal_initializer(stddev=0.1))
         W4 = tf.get_variable(shape=[units2, digit_len], name="WFC4",
-                             initializer=tf.contrib.layers.xavier_initializer())
+                             initializer=tf.truncated_normal_initializer(stddev=0.1))
         W5 = tf.get_variable(shape=[units2, digit_len], name="WFC5",
-                             initializer=tf.contrib.layers.xavier_initializer())
+                             initializer=tf.truncated_normal_initializer(stddev=0.1))
 
         b1 = bias("BFC1", [11])
         b2 = bias("BFC2", [11])
@@ -167,6 +169,7 @@ class ConvNN:
 
     def fit_model(self):
         batch_size = 256
+        global_step = 0
 
         (x_train, y_train), (x_valid, y_valid) = self.data[:-1]
 
@@ -179,8 +182,17 @@ class ConvNN:
         self.session = tf.InteractiveSession()
         self.session.run(self.init)
 
+        self.accuracy = accuracy2(self.logits_1, self.logits_2, self.logits_3, self.logits_4, self.logits_5, self.y)
+
+        tf.summary.scalar('accuracy', self.accuracy)
+        tf.summary.scalar('loss', self.loss)
+
+        self.merged = tf.summary.merge_all()
+        self.train_writer = tf.summary.FileWriter(tensor_board_path + '/train', self.session.graph)
+        self.valid_writer = tf.summary.FileWriter(tensor_board_path + '/valid')
+
         if self.use_prev:
-            self.saver.restore(self.session, 'D:/Programming/bsuir/sem4/MO/lab4/models/model0.724.ckpt')
+            self.saver.restore(self.session, 'D:/Programming/bsuir/sem4/MO/lab4/models/model0.698.ckpt')
             return
 
         for epoch in range(self.epochs):
@@ -190,6 +202,7 @@ class ConvNN:
             v_x, v_y = data_shuffle(x_valid, y_valid)
 
             for iteration in range(num_train_iter):
+                global_step += 1
                 start = iteration * batch_size
                 end = (iteration + 1) * batch_size
                 x_batch, y_batch = get_next_batch(tr_x, tr_y, start, end)
@@ -200,20 +213,19 @@ class ConvNN:
                     self.drop_rate: 0.1  # 0.15
                 }
 
-                _, loss = self.session.run([self.optimizer, self.loss], feed_dict=feed_dict_batch)
+                _, loss, summary = self.session.run([self.optimizer, self.loss, self.merged], feed_dict=feed_dict_batch)
+                self.train_writer.add_summary(summary, global_step)
 
                 if iteration % 10 == 0:
-                    fetches = [self.logits_1, self.logits_2, self.logits_3, self.logits_4, self.logits_5, self.y]
-
                     feed_dict_batch = {
                         self.x: x_batch,
                         self.y: y_batch,
                         self.drop_rate: 0
                     }
 
-                    l1, l2, l3, l4, l5, expected_labels = self.session.run(fetches, feed_dict=feed_dict_batch)
-                    acc = accuracy(l1, l2, l3, l4, l5, expected_labels)
-                    print("iter {0:3d}:\t TRAIN Loss={1:.2f},\t Accuracy={2:.01%}".format(iteration, loss, acc))
+                    acc = self.session.run(self.accuracy, feed_dict=feed_dict_batch)
+
+                    print("iter {0:3d}:\t TRAIN Loss={1:.2f},\t Accuracy={2:.01%}".format(iteration, loss, acc / batch_size))
 
             acc_valid = 0
             for iteration in range(num_valid_iter):
@@ -227,10 +239,11 @@ class ConvNN:
                     self.drop_rate: 0
                 }
 
-                fetches = [self.logits_1, self.logits_2, self.logits_3, self.logits_4, self.logits_5, self.y]
-                l1, l2, l3, l4, l5, expected_labels = self.session.run(fetches, feed_dict=feed_dict_batch)
+                acc, summary = self.session.run([self.accuracy, self.merged], feed_dict=feed_dict_batch)
 
-                acc_valid += accuracy(l1, l2, l3, l4, l5, expected_labels)
+                self.valid_writer.add_summary(summary, global_step)
+
+                acc_valid += acc / batch_size
 
             acc_valid = acc_valid / num_valid_iter
 
@@ -260,10 +273,9 @@ class ConvNN:
                 self.drop_rate: 0
             }
 
-            fetches = [self.logits_1, self.logits_2, self.logits_3, self.logits_4, self.logits_5, self.y]
-            l1, l2, l3, l4, l5, pred_labels = self.session.run(fetches, feed_dict=feed_dict_batch)
+            acc = self.session.run(self.accuracy, feed_dict=feed_dict_batch)
 
-            acc_valid += accuracy(l1, l2, l3, l4, l5, pred_labels)
+            acc_valid += acc / batch_size
 
         print('---------------------------------------------------------')
         print("TEST Accuracy={0:.01%}".format(acc_valid / num_test_iter))
@@ -291,6 +303,25 @@ def accuracy(logit_1, logit_2, logit_3, logit_4, logit_5, labels):
             correct += 1
 
     return correct / total
+
+
+def predictions2(logit_1, logit_2, logit_3, logit_4, logit_5):
+    digit1 = tf.argmax(logit_1, axis=1)
+    digit2 = tf.argmax(logit_2, axis=1)
+    digit3 = tf.argmax(logit_3, axis=1)
+    digit4 = tf.argmax(logit_4, axis=1)
+    digit5 = tf.argmax(logit_5, axis=1)
+    return tf.stack([digit1, digit2, digit3, digit4, digit5], axis=1)
+
+
+def accuracy2(logit_1, logit_2, logit_3, logit_4, logit_5, labels):
+    labels = labels[:, 1:]
+
+    digits = predictions2(logit_1, logit_2, logit_3, logit_4, logit_5)
+
+    eq = tf.equal(digits, tf.cast(labels, 'int64'))
+
+    return tf.reduce_sum(tf.cast(tf.reduce_all(eq, axis=1), tf.float32))
 
 
 def get_next_batch(data_x, data_y, start, end):

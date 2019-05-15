@@ -6,6 +6,7 @@ import csv
 import cv2
 import math
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 
 def convert_to_csv(r, w):
@@ -129,6 +130,13 @@ def prepare_svhn_data(valid_split=0.1):
     else:
         x_test, y_test = preprocess_data(test_path_csv, mat_prefix / 'test')
         np.savez(test_npz, x_test=x_test, y_test=y_test)
+
+    # num_len = []
+    # for i in y_train:
+    #     for j in i[i < 1]:
+    #         num_len.append(int(j))
+    # plt.hist(num_len, bins=range(min(num_len), max(num_len) + 1, 1))
+    # plt.show()
 
     l_train_x = len(x_train)
     x_train, x_valid = np.split(x_train, [l_train_x - int(valid_split * l_train_x)])
